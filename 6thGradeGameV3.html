@@ -168,16 +168,40 @@ Which term means slow down?, Ritardando, Accelerando, L
 Which term means speed up?, Accelerando, Ritardando, L
 Which is steadier?, Metronome, Fermata, L`;
 
-  function parseCSV(text){
-    return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map((line,idx)=>{
-      const parts=line.split(',').map(s=>s.trim());
-      if(parts.length<4) throw new Error(`Line ${idx+1} needs 4 values: prompt,left,right,correct(L/R)`);
-      const [prompt,left,right,sideRaw]=parts;
-      const side=(sideRaw||'').toUpperCase()[0];
-      if(!['L','R'].includes(side)) throw new Error(`Line ${idx+1}: correct side must be L or R`);
-      return {prompt,left,right,correctSide:side};
+<script>
+// ...keep everything else the same, just replace parseCSV with this:
+function parseCSV(text){
+  return text
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map((line, idx) => {
+      // Split by the LAST three commas so the prompt can contain commas
+      const c3 = line.lastIndexOf(',');
+      if (c3 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const sideRaw = line.slice(c3 + 1).trim();
+
+      const before3 = line.slice(0, c3);
+      const c2 = before3.lastIndexOf(',');
+      if (c2 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const right = before3.slice(c2 + 1).trim();
+
+      const before2 = before3.slice(0, c2);
+      const c1 = before2.lastIndexOf(',');
+      if (c1 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const left = before2.slice(c1 + 1).trim();
+
+      const prompt = before2.slice(0, c1).trim();
+
+      const side = (sideRaw || '').toUpperCase()[0];
+      if (!['L','R'].includes(side)) {
+        throw new Error(`Line ${idx+1}: correct side must be L or R`);
+      }
+      return { prompt, left, right, correctSide: side };
     });
-  }
+}
+</script>
+
 
   function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; render(); }
 
