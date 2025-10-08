@@ -1,3 +1,8 @@
+Absolutely — here’s a **clean, copy-paste replacement** for your Level 1 file that **randomizes which side shows the correct answer every question** (50/50), **grades correctly**, and **logs the displayed sides** in the CSV.
+
+Just replace your current file with this:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,7 +78,7 @@
 
     <details>
       <summary>Load / edit questions (CSV format)</summary>
-      <p>Format: <code>prompt, leftOption, rightOption, correctSide</code> (L or R). One per line.</p>
+      <p>Format: <code>prompt, leftOption, rightOption, correctSide</code> (L or R). One per line. Prompts can include commas.</p>
       <textarea id="editor" spellcheck="false"></textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="applyBtn">Apply Questions</button>
@@ -111,6 +116,7 @@
 
   // State
   let questions=[], i=0, correct=0, wrong=0, results=[];
+  let currentCorrectSide = 'L'; // derived after randomizing visible sides
   const qIndexEl=$('#qIndex'), correctEl=$('#correct'), wrongEl=$('#wrong'), accEl=$('#accuracy');
   const promptEl=$('#prompt'), leftBtn=$('#left'), rightBtn=$('#right'), footNote=$('#footNote'), editor=$('#editor');
 
@@ -168,64 +174,107 @@ Which term means slow down?, Ritardando, Accelerando, L
 Which term means speed up?, Accelerando, Ritardando, L
 Which is steadier?, Metronome, Fermata, L`;
 
-<script>
-// ...keep everything else the same, just replace parseCSV with this:
-function parseCSV(text){
-  return text
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(Boolean)
-    .map((line, idx) => {
-      // Split by the LAST three commas so the prompt can contain commas
-      const c3 = line.lastIndexOf(',');
-      if (c3 === -1) throw new Error(`Line ${idx+1}: missing fields`);
-      const sideRaw = line.slice(c3 + 1).trim();
+  // Robust CSV parser (prompts may contain commas)
+  function parseCSV(text){
+    return text
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map((line, idx) => {
+        const c3 = line.lastIndexOf(',');
+        if (c3 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+        const sideRaw = line.slice(c3 + 1).trim();
 
-      const before3 = line.slice(0, c3);
-      const c2 = before3.lastIndexOf(',');
-      if (c2 === -1) throw new Error(`Line ${idx+1}: missing fields`);
-      const right = before3.slice(c2 + 1).trim();
+        const before3 = line.slice(0, c3);
+        const c2 = before3.lastIndexOf(',');
+        if (c2 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+        const right = before3.slice(c2 + 1).trim();
 
-      const before2 = before3.slice(0, c2);
-      const c1 = before2.lastIndexOf(',');
-      if (c1 === -1) throw new Error(`Line ${idx+1}: missing fields`);
-      const left = before2.slice(c1 + 1).trim();
+        const before2 = before3.slice(0, c2);
+        const c1 = before2.lastIndexOf(',');
+        if (c1 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+        const left = before2.slice(c1 + 1).trim();
 
-      const prompt = before2.slice(0, c1).trim();
-
-      const side = (sideRaw || '').toUpperCase()[0];
-      if (!['L','R'].includes(side)) {
-        throw new Error(`Line ${idx+1}: correct side must be L or R`);
-      }
-      return { prompt, left, right, correctSide: side };
-    });
-}
-</script>
-
+        const prompt = before2.slice(0, c1).trim();
+        const side = (sideRaw || '').toUpperCase()[0];
+        if (!['L','R'].includes(side)) throw new Error(`Line ${idx+1}: correct side must be L or R`);
+        return { prompt, left, right, correctSide: side };
+      });
+  }
 
   function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; render(); }
 
   function render(){
     // Endless mode: wrap & reshuffle when we hit the end
     if(questions.length && i>=questions.length){ i=0; shuffleInPlace(questions); }
-    qIndexEl.textContent=`Q ${Math.min(i+1,questions.length)}/${questions.length}`;
-    correctEl.textContent=`✔ ${correct}`; wrongEl.textContent=`✘ ${wrong}`; accEl.textContent=`${accuracy(correct,wrong)}%`;
-    const q=questions[i];
-    if(!q){ promptEl.innerHTML='Add questions below, then Apply.'; leftBtn.textContent='—'; rightBtn.textContent='—'; leftBtn.disabled=true; rightBtn.disabled=true; footNote.textContent='Paste CSV below to load a set.'; return; }
-    promptEl.textContent=q.prompt; leftBtn.textContent=q.left; rightBtn.textContent=q.right;
-    leftBtn.classList.remove('correct','incorrect'); rightBtn.classList.remove('correct','incorrect');
-    leftBtn.disabled=false; rightBtn.disabled=false; footNote.textContent='Tap an answer. Instant feedback shows in green/red.';
+
+    qIndexEl.textContent = `Q ${Math.min(i+1,questions.length)}/${questions.length}`;
+    correctEl.textContent = `✔ ${correct}`;
+    wrongEl.textContent   = `✘ ${wrong}`;
+    accEl.textContent     = `${accuracy(correct,wrong)}%`;
+
+    const q = questions[i];
+    if(!q){
+      promptEl.innerHTML='Add questions below, then Apply.';
+      leftBtn.textContent='—'; rightBtn.textContent='—';
+      leftBtn.disabled=true; rightBtn.disabled=true;
+      footNote.textContent='Paste CSV below to load a set.';
+      return;
+    }
+
+    // ---- RANDOMIZE which side shows the correct answer (50/50) ----
+    const flip = Math.random() < 0.5;  // true => swap sides
+    const leftText  = flip ? q.right : q.left;
+    const rightText = flip ? q.left  : q.right;
+
+    // Derive correct side after the flip
+    const orig = q.correctSide; // 'L' vs 'R' in the CSV
+    currentCorrectSide = flip ? (orig === 'L' ? 'R' : 'L') : orig;
+
+    // Render
+    promptEl.textContent = q.prompt;
+    leftBtn.textContent  = leftText;
+    rightBtn.textContent = rightText;
+
+    leftBtn.classList.remove('correct','incorrect');
+    rightBtn.classList.remove('correct','incorrect');
+    leftBtn.disabled=false; rightBtn.disabled=false;
+    footNote.textContent='Tap an answer. Instant feedback shows in green/red.';
   }
 
   async function handlePick(side){
     const q=questions[i]; if(!q) return;
-    const isRight=(side===q.correctSide);
-    const pickBtn=side==='L'?leftBtn:rightBtn; const otherBtn=side==='L'?rightBtn:leftBtn;
-    pickBtn.classList.add(isRight?'correct':'incorrect'); if(!isRight){ otherBtn.classList.add('correct'); }
-    leftBtn.disabled=true; rightBtn.disabled=true; isRight?correct++:wrong++;
-    results.push({n:i+1,prompt:q.prompt,left:q.left,right:q.right,correctSide:q.correctSide,pick:side,isRight,isot:new Date().toISOString()});
-    qIndexEl.textContent=`Q ${Math.min(i+1,questions.length)}/${questions.length}`; correctEl.textContent=`✔ ${correct}`; wrongEl.textContent=`✘ ${wrong}`; accEl.textContent=`${accuracy(correct,wrong)}%`;
-    await sleep(450); i++; render();
+
+    const isRight = (side === currentCorrectSide);
+    const pickBtn  = side==='L' ? leftBtn  : rightBtn;
+    const otherBtn = side==='L' ? rightBtn : leftBtn;
+
+    pickBtn.classList.add(isRight ? 'correct' : 'incorrect');
+    if(!isRight){ otherBtn.classList.add('correct'); }
+
+    leftBtn.disabled=true; rightBtn.disabled=true;
+    isRight ? correct++ : wrong++;
+
+    // Log EXACTLY what students saw on screen (after randomization)
+    results.push({
+      n:i+1,
+      prompt:q.prompt,
+      left:leftBtn.textContent,
+      right:rightBtn.textContent,
+      correctSide:currentCorrectSide, // post-randomization
+      pick:side,
+      isRight,
+      isot:new Date().toISOString()
+    });
+
+    qIndexEl.textContent=`Q ${Math.min(i+1,questions.length)}/${questions.length}`;
+    correctEl.textContent=`✔ ${correct}`;
+    wrongEl.textContent=`✘ ${wrong}`;
+    accEl.textContent=`${accuracy(correct,wrong)}%`;
+
+    await sleep(450);
+    i++;
+    render();
   }
 
   leftBtn.addEventListener('click',()=>handlePick('L'));
@@ -270,3 +319,6 @@ function parseCSV(text){
 </script>
 </body>
 </html>
+```
+
+Want me to hand you the same fix baked into your **7th & 8th** files too?
