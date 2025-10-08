@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Tap-In: This or That — Level 3 (8th Grade)</title>
+<style>
+  :root{ --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; --wrong:#ef4444; --card:#111827cc; }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 50% 10%, #111827 0%, var(--bg) 60%);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+  .wrap{display:flex;flex-direction:column;min-height:100%}
+  header{display:flex;flex-direction:column;gap:10px;padding:16px;background:#0b1224;border-bottom:1px solid #1f2937;position:sticky;top:0;z-index:10}
+  .topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .title{font-weight:900;font-size:clamp(16px,2vw,20px);letter-spacing:.3px}
+  .quote-wrap{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;border:1px solid #0f1a35;background:linear-gradient(90deg,#0c1328,#0f1a35);border-radius:16px}
+  .quote{font-size:clamp(18px,3.2vw,36px);line-height:1.25;text-align:center;font-weight:800;letter-spacing:.2px;color:#f8fafc;padding:4px 12px;text-shadow:0 2px 20px #000}
+  .quote-fade{animation:fadeIn .45s ease}
+  @keyframes fadeIn{from{opacity:.3;transform:translateY(-3px)}to{opacity:1;transform:none}}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .pill{padding:6px 10px;border-radius:999px;background:#0f172acc;border:1px solid #1f2937;font-variant-numeric:tabular-nums}
+  .pill.success{outline:2px solid #14532d}.pill.error{outline:2px solid #7f1d1d}
+  button{appearance:none;border:1px solid #334155;background:linear-gradient(#111827,#0b1220);color:var(--fg);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:.15s transform}
+  button:hover{transform:translateY(-1px)}
+  main{flex:1;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;padding:16px}
+  .card{width:min(1100px,96vw);background:var(--card);border:1px solid #1f2937;border-radius:24px;box-shadow:0 30px 80px #0008;overflow:hidden}
+  .banner{padding:12px 14px;border-bottom:1px solid #1f2937;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .welcome{font-weight:900;letter-spacing:.3px;color:#e5e7eb;font-size:clamp(14px,1.8vw,18px)}
+  .prompt{padding:16px 18px 0;font-size:clamp(22px,3.2vw,36px);text-align:center;color:#cbd5e1;min-height:3lh}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px}
+  .choice{display:flex;align-items:center;justify-content:center;border-radius:18px;border:2px solid #1f2937;background:linear-gradient(#0b1325,#0b1020);padding:24px;min-height:min(32vh,360px);font-size:clamp(22px,5.5vw,54px);font-weight:900;letter-spacing:.5px;user-select:none}
+  .choice.correct{outline:4px solid var(--accent);box-shadow:0 0 0 6px #22c55e22 inset}
+  .choice.incorrect{outline:4px solid var(--wrong);box-shadow:0 0 0 6px #ef444422 inset}
+  .foot{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#94a3b8;font-size:14px;border-top:1px solid #1f2937}
+  .kbd{border:1px solid #334155;border-radius:8px;padding:2px 6px;background:#0b1224;color:#cbd5e1}
+  @media (max-width:720px){.choices{grid-template-columns:1fr}.choice{min-height:26vh}}
+  details{width:min(1100px,96vw)} details>summary{cursor:pointer;padding:10px 2px;color:#cbd5e1;font-weight:700}
+  textarea{width:100%;min-height:240px;border-radius:12px;border:1px solid #334155;background:#0b1220;color:#f1f5f9;padding:10px;font-family:ui-monospace, Menlo, Consolas, monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="topline">
+      <div class="title">Tap-In: This or That — Level 3 (8th Grade)</div>
+      <div class="stat">
+        <span class="pill" id="qIndex">Q 0/0</span>
+        <span class="pill success" id="correct">✔ 0</span>
+        <span class="pill error" id="wrong">✘ 0</span>
+        <span class="pill" id="accuracy">—%</span>
+      </div>
+    </div>
+    <div class="quote-wrap"><div id="quote" class="quote quote-fade"></div></div>
+    <div class="controls">
+      <button id="resetBtn">Reset</button>
+      <button id="shuffleBtn">Shuffle</button>
+      <button id="downloadBtn">Export CSV</button>
+      <button id="fullscreenBtn">Fullscreen</button>
+      <button id="nextQuoteBtn">Next Quote</button>
+      <button id="lockQuoteBtn">Lock Quote</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="card">
+      <div class="banner"><div class="welcome">Welcome to 8th Grade Band</div><div><span class="kbd">A/←</span> = left &nbsp; <span class="kbd">D/→</span> = right</div></div>
+      <div class="prompt" id="prompt">Tap the correct answer</div>
+      <div class="choices">
+        <button class="choice" id="left">Left</button>
+        <button class="choice" id="right">Right</button>
+      </div>
+      <div class="foot"><div id="footNote">Tip: Use Shuffle to vary order.</div><div></div></div>
+    </section>
+
+    <details>
+      <summary>Load / edit questions (CSV format)</summary>
+      <p>Format: <code>prompt, leftOption, rightOption, correctSide</code> (L or R). One per line. Prompts can include commas.</p>
+      <textarea id="editor" spellcheck="false"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button id="applyBtn">Apply Questions</button>
+        <button id="sampleBtn">Reload Default Set</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+    </details>
+  </main>
+</div>
+
+<script>
+/* ===== Quotes ===== */
+const QUOTES = [
+  "Perfection is not attainable, but if we chase perfection we can catch excellence. — Vince Lombardi",
+  "Discipline is the bridge between goals and accomplishment. — Jim Rohn",
+  "Success is the sum of small efforts, repeated day in and day out. — Robert Collier",
+  "Don't practice until you get it right. Practice until you can't get it wrong. — Unknown",
+  "The standards you walk past are the standards you accept. — David Morrison",
+  "The only way to do great work is to love what you do. — Steve Jobs",
+  "Excellence is not an exception; it is a prevailing attitude. — Colin Powell",
+  "Practice like you’ve never won. Perform like you’ve never lost. — Unknown"
+];
+let qi=0, quoteTimer=null, quoteLocked=false;
+function showQuote(step=0){ if(quoteLocked) return; qi=(qi+step+QUOTES.length)%QUOTES.length; const el=document.getElementById('quote'); el.textContent=QUOTES[qi]; el.classList.remove('quote-fade'); void el.offsetWidth; el.classList.add('quote-fade'); }
+function startQuoteRotation(){ clearInterval(quoteTimer); quoteTimer=setInterval(()=>showQuote(1),12000); }
+document.getElementById('nextQuoteBtn').onclick=()=>{ showQuote(1); startQuoteRotation(); };
+document.getElementById('lockQuoteBtn').onclick=()=>{ quoteLocked=!quoteLocked; document.getElementById('lockQuoteBtn').textContent=quoteLocked?'Unlock Quote':'Lock Quote'; };
+showQuote(0); startQuoteRotation();
+
+/* ===== Utils ===== */
+const $=s=>document.querySelector(s);
+const shuffleInPlace = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+const accuracy=(c,w)=>(c+w?Math.round((c/(c+w))*100):0);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ===== State ===== */
+let questions=[], i=0, correct=0, wrong=0, results=[];
+let currentCorrectSide = 'L'; // derived after randomizing visible sides
+const qIndexEl=$('#qIndex'), correctEl=$('#correct'), wrongEl=$('#wrong'), accEl=$('#accuracy');
+const promptEl=$('#prompt'), leftBtn=$('#left'), rightBtn=$('#right'), footNote=$('#footNote'), editor=$('#editor');
+
+/* ===== Robust CSV (prompts may contain commas) ===== */
+function parseCSV(text){
+  return text
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map((line, idx) => {
+      const c3 = line.lastIndexOf(',');
+      if (c3 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const sideRaw = line.slice(c3 + 1).trim();
+
+      const before3 = line.slice(0, c3);
+      const c2 = before3.lastIndexOf(',');
+      if (c2 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const right = before3.slice(c2 + 1).trim();
+
+      const before2 = before3.slice(0, c2);
+      const c1 = before2.lastIndexOf(',');
+      if (c1 === -1) throw new Error(`Line ${idx+1}: missing fields`);
+      const left = before2.slice(c1 + 1).trim();
+
+      const prompt = before2.slice(0, c1).trim();
+      const side = (sideRaw || '').toUpperCase()[0];
+      if (!['L','R'].includes(side)) throw new Error(`Line ${idx+1}: correct side must be L or R`);
+      return { prompt, left, right, correctSide: side };
+    });
+}
+
+/* ===== Core ===== */
+function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; render(); }
+
+function render(){
+  // Endless loop + reshuffle at the end
+  if(questions.length && i>=questions.length){ i=0; shuffleInPlace(questions); }
+
+  qIndexEl.textContent = `Q ${Math.min(i+1,questions.length)}/${questions.length}`;
+  correctEl.textContent = `✔ ${correct}`;
+  wrongEl.textContent   = `✘ ${wrong}`;
+  accEl.textContent     = `${accuracy(correct,wrong)}%`;
+
+  const q = questions[i];
+  if(!q){
+    promptEl.innerHTML='Add questions below, then Apply.';
+    leftBtn.textContent='—'; rightBtn.textContent='—';
+    leftBtn.disabled=true; rightBtn.disabled=true;
+    footNote.textContent='Paste CSV below to load a set.';
+    return;
+  }
+
+  // 50/50 flip of visible sides so the correct answer is randomized
+  const flip = Math.random() < 0.5;
+  const leftText  = flip ? q.right : q.left;
+  const rightText = flip ? q.left  : q.right;
+
+  // Derive which visible side is correct after the flip
+  const orig = q.correctSide; // 'L' or 'R' from CSV
+  currentCorrectSide = flip ? (orig === 'L' ? 'R' : 'L') : orig;
+
+  // Render
+  promptEl.textContent = q.prompt;
+  leftBtn.textContent  = leftText;
+  rightBtn.textContent = rightText;
+
+  leftBtn.classList.remove('correct','incorrect');
+  rightBtn.classList.remove('correct','incorrect');
+  leftBtn.disabled=false; rightBtn.disabled=false;
+  footNote.textContent='Tap an answer. Instant feedback shows in green/red.';
+}
+
+async function handlePick(side){
+  const q=questions[i]; if(!q) return;
+
+  const isRight = (side === currentCorrectSide);
+  const pickBtn  = side==='L' ? leftBtn  : rightBtn;
+  const otherBtn = side==='L' ? rightBtn : leftBtn;
+
+  pickBtn.classList.add(isRight ? 'correct' : 'incorrect');
+  if(!isRight){ otherBtn.classList.add('correct'); }
+
+  leftBtn.disabled=true; rightBtn.disabled=true;
+  isRight ? correct++ : wrong++;
+
+  // Log exactly what was displayed
+  results.push({
+    n:i+1,
+    prompt:q.prompt,
+    left:leftBtn.textContent,
+    right:rightBtn.textContent,
+    correctSide:currentCorrectSide, // after randomization
+    pick:side,
+    isRight,
+    isot:new Date().toISOString()
+  });
+
+  qIndexEl.textContent=`Q ${Math.min(i+1,questions.length)}/${questions.length}`;
+  correctEl.textContent=`✔ ${correct}`;
+  wrongEl.textContent=`✘ ${wrong}`;
+  accEl.textContent=`${accuracy(correct,wrong)}%`;
+
+  await sleep(450);
+  i++;
+  render();
+}
+
+leftBtn.addEventListener('click',()=>handlePick('L'));
+rightBtn.addEventListener('click',()=>handlePick('R'));
+window.addEventListener('keydown',e=>{
+  if(['ArrowLeft','a','A'].includes(e.key)){e.preventDefault();leftBtn.click();}
+  if(['ArrowRight','d','D'].includes(e.key)){e.preventDefault();rightBtn.click();}
+});
+
+/* ===== Controls ===== */
+document.getElementById('resetBtn').onclick=()=>{ i=0; correct=0; wrong=0; results=[]; render(); quoteLocked=false; startQuoteRotation(); };
+document.getElementById('shuffleBtn').onclick=()=>{ shuffleInPlace(questions); i=0; correct=0; wrong=0; results=[]; render(); };
+document.getElementById('fullscreenBtn').onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement){el.requestFullscreen?.();} else {document.exitFullscreen?.();} };
+document.getElementById('downloadBtn').onclick=()=>{
+  const now=new Date().toISOString().replaceAll(':','-'); const sessionId=Math.random().toString(36).slice(2,8).toUpperCase();
+  const summary=[
+    ['session_id',sessionId],
+    ['date',now],
+    ['total_questions_in_bank',questions.length],
+    ['answers_recorded',results.length],
+    ['correct',correct],
+    ['wrong',wrong],
+    ['accuracy_percent',accuracy(correct,wrong)]
+  ].map(r=>r.join(','));
+  const headers=['n','prompt','left','right','correctSide','pick','isRight','timestamp'];
+  const rows=results.map(r=>[r.n,r.prompt,r.left,r.right,r.correctSide,r.pick,r.isRight?'TRUE':'FALSE',r.isot]);
+  const esc=v=>String(v).includes(',')?`"${String(v).replaceAll('"','""')}"`:String(v);
+  const csv=[...summary,'',headers.join(','),...rows.map(cols=>cols.map(esc).join(','))].join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=Object.assign(document.createElement('a'),{href:url,download:`results_level3_${sessionId}_${now}.csv`});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+/* ===== Default question set (Level 3 — 8th grade) ===== */
+const defaultCSV = `Which key has 4 flats?, Ab, E, L
+Which key has 4 sharps?, E, Ab, L
+Which key has 5 flats?, Db, B, L
+Which key has 5 sharps?, B, Db, L
+Which has more sharps?, A, E, R
+Which has more flats?, Eb, Ab, R
+Which has fewer accidentals?, F, E, L
+Major scale pattern is…, W-W-H-W-W-W-H, All half steps, L
+Chromatic scale pattern is…, All half steps, W-W-H-W-W-W-H, L
+Which triad sounds brighter?, Major, Minor, L
+Which triad sounds darker?, Minor, Major, L
+Which is louder?, ff, fff, R
+Which is softer?, pp, ppp, L
+Suddenly soft is…, Subito piano, Crescendo, L
+Suddenly loud is…, Subito forte, Decrescendo, L
+Marked accent is…, Accent, Slur, L
+Held longer is…, Fermata, Accent, L
+Connected different notes is…, Slur, Tie, L
+Connects same pitch is…, Tie, Slur, L
+Fast tempo is…, Allegro, Largo, L
+Very fast tempo is…, Presto, Andante, L
+Slow tempo is…, Largo, Presto, L
+Majestic tempo is…, Maestoso, Presto, L
+Lively tempo is…, Allegro, Largo, L
+Which is faster?, Presto, Allegro, L
+Which is slower?, Andante, Allegro, L
+Speed up means…, Accelerando, Ritardando, L
+Slow down means…, Ritardando, Accelerando, L
+Form with recurring A is…, Rondo, Fugue, L
+Form layering entries is…, Fugue, Rondo, L
+Phrase shape improves…, Musicality, Volume only, L
+Best blend strategy…, Match tone, Overpower, L
+Best balance strategy…, Hear melody, Only self, L
+Improve intonation…, Adjust/Listen, Ignore, L
+Improve rhythm…, Subdivide, Guess, L
+Better ensemble…, Watch & breathe, Ignore, L
+Piccolo vs flute: higher?, Piccolo, Flute, L
+Bass bone vs bone: lower?, Bass Trombone, Trombone, L
+Marimba vs snare: pitched?, Marimba, Snare, L
+Snare vs xylophone: unpitched?, Snare, Xylophone, L
+Clarinet reed type is…, Single reed, Double reed, L
+Oboe reed type is…, Double reed, Single reed, L
+Horn transposition is…, F, Bb, L
+Trumpet transposition is…, Bb, F, L
+Sax family is…, Woodwind, Brass, L
+Euphonium family is…, Brass, Woodwind, L
+Bassoon family is…, Woodwind, Brass, L
+Crescendo hairpin points…, Open to right, Open to left, L
+Decrescendo hairpin points…, Open to left, Open to right, L
+More tongue contact is…, Staccato, Slur, L
+More connected style is…, Legato, Staccato, L
+Tenuto means…, Full value, Short, L
+Marcato means…, Accented/separated, Slurred, L
+Intonation check is…, Tune to reference, Ignore, L
+If you’re sharp, move slide…, Out, In, L
+If you’re flat, move slide…, In, Out, L
+Key with 6 sharps?, F#, Gb, L
+Key with 6 flats?, Gb, F#, L
+Relative minor shares…, Key signature, Different signature, L
+Parallel minor shares…, Tonic pitch, Key signature, L
+Natural minor half steps at…, 2-3 & 5-6, 3-4 & 7-8, L
+Harmonic minor has…, Raised 7, Lowered 2, L
+Melodic minor ascending has…, Raised 6 & 7, Lowered 6 & 7, L
+Articulation that separates…, Staccato, Legato, L
+Articulation that connects…, Legato, Staccato, L
+Dynamic contrast means…, Range of volumes, One volume, L
+Timbre means…, Tone color, Note length, L
+Intonation means…, Pitch accuracy, Note speed, L
+Orchestration means…, Instrument choices, Tempo choice, L
+Rehearsal etiquette is…, Listen & respect, Disrupt, L
+Practice plan works…, Regular/targeted, Random, L
+Performance prep is…, Rest/warm-up, None, L
+Sight-reading tip is…, Keep steady tempo, Stop for mistakes, L`;
+
+/* ===== Editor ===== */
+document.getElementById('applyBtn').onclick=()=> applyFromEditor();
+document.getElementById('sampleBtn').onclick=()=>{ editor.value=defaultCSV; applyFromEditor(); };
+document.getElementById('clearBtn').onclick=()=>{ editor.value=''; setQuestions([]); };
+function applyFromEditor(){ try{ const qs=parseCSV(editor.value.trim()); setQuestions(qs); } catch(err){ alert(err.message); } }
+
+/* ===== Init ===== */
+editor.value=defaultCSV; try{ setQuestions(parseCSV(editor.value)); }catch{ setQuestions([]); }
+</script>
+</body>
+</html>
