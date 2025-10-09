@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Tap-In: This or That — C, F, B-flat, E-flat Major Scales</title>
+<title>Tap-In: This or That — C, F, B-flat, E-flat Major Scales (Pt. 1 of 4)</title>
 <style>
   :root{ --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; --wrong:#ef4444; --card:#111827cc; }
   *{box-sizing:border-box} html,body{height:100%}
@@ -19,7 +19,7 @@
   .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
   .pill{padding:6px 10px;border-radius:999px;background:#0f172acc;border:1px solid #1f2937;font-variant-numeric:tabular-nums}
   .pill.success{outline:2px solid #14532d}.pill.error{outline:2px solid #7f1d1d}
-  button{appearance:none;border:1px solid #334155;background:linear-gradient(#111827,#0b1220);color:var(--fg);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:.15s transform}
+  button{appearance:none;border:1px solid #334155;background:linear-gradient(#111827,#0b1220);color:var(--fg);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:.15s transform,.15s opacity,.15s background}
   button:hover{transform:translateY(-1px)} button:active{transform:translateY(0)}
   main{flex:1;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;padding:16px}
   .card{width:min(1100px,96vw);background:var(--card);border:1px solid #1f2937;border-radius:24px;box-shadow:0 30px 80px #0008;overflow:hidden}
@@ -41,7 +41,7 @@
 <div class="wrap">
   <header>
     <div class="topline">
-      <div class="title">Tap-In: This or That — C, F, B-flat, E-flat Major Scales</div>
+      <div class="title">Tap-In: This or That — C, F, B-flat, E-flat Major Scales (Pt. 1 of 4)</div>
       <div class="stat">
         <span class="pill" id="qIndex">Q 0/0</span>
         <span class="pill success" id="correct">✔ 0</span>
@@ -115,6 +115,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* ===== State ===== */
 let questions=[], i=0, correct=0, wrong=0, results=[];
 let currentCorrectSide = 'L'; // derived after randomizing visible sides
+let lastCorrectSide = null;   // anti-streak bookkeeping
+let correctSideStreak = 0;    // anti-streak bookkeeping
+
 const qIndexEl=$('#qIndex'), correctEl=$('#correct'), wrongEl=$('#wrong'), accEl=$('#accuracy');
 const promptEl=$('#prompt'), leftBtn=$('#left'), rightBtn=$('#right'), footNote=$('#footNote'), editor=$('#editor');
 
@@ -147,7 +150,13 @@ function parseCSV(text){
 }
 
 /* ===== Core ===== */
-function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; render(); }
+function setQuestions(qs){
+  questions = qs.slice();
+  shuffleInPlace(questions);   // shuffle on load
+  i = 0; correct = 0; wrong = 0; results = [];
+  lastCorrectSide = null; correctSideStreak = 0;
+  render();
+}
 
 function render(){
   // Endless loop + reshuffle at the end
@@ -176,10 +185,26 @@ function render(){
   const orig = q.correctSide; // 'L' or 'R' from CSV
   currentCorrectSide = flip ? (orig === 'L' ? 'R' : 'L') : orig;
 
-  // Render
+  // Render text
   promptEl.textContent = q.prompt;
   leftBtn.textContent  = leftText;
   rightBtn.textContent = rightText;
+
+  // --- Anti-streak: avoid 3+ times in a row on same side ---
+  if (lastCorrectSide === currentCorrectSide) {
+    correctSideStreak++;
+  } else {
+    correctSideStreak = 1;
+    lastCorrectSide = currentCorrectSide;
+  }
+  if (correctSideStreak >= 3) {
+    const tmp = leftBtn.textContent;
+    leftBtn.textContent = rightBtn.textContent;
+    rightBtn.textContent = tmp;
+    currentCorrectSide = (currentCorrectSide === 'L') ? 'R' : 'L';
+    lastCorrectSide = currentCorrectSide;
+    correctSideStreak = 1;
+  }
 
   leftBtn.classList.remove('correct','incorrect');
   rightBtn.classList.remove('correct','incorrect');
@@ -230,8 +255,13 @@ window.addEventListener('keydown',e=>{
 });
 
 /* ===== Controls ===== */
-document.getElementById('resetBtn').onclick=()=>{ i=0; correct=0; wrong=0; results=[]; render(); quoteLocked=false; startQuoteRotation(); };
-document.getElementById('shuffleBtn').onclick=()=>{ shuffleInPlace(questions); i=0; correct=0; wrong=0; results=[]; render(); };
+document.getElementById('resetBtn').onclick=()=>{ 
+  shuffleInPlace(questions);   // shuffle on reset
+  i=0; correct=0; wrong=0; results=[]; 
+  lastCorrectSide = null; correctSideStreak = 0;
+  render(); quoteLocked=false; startQuoteRotation(); 
+};
+document.getElementById('shuffleBtn').onclick=()=>{ shuffleInPlace(questions); i=0; correct=0; wrong=0; results=[]; lastCorrectSide=null; correctSideStreak=0; render(); };
 document.getElementById('fullscreenBtn').onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement){el.requestFullscreen?.();} else {document.exitFullscreen?.();} };
 document.getElementById('downloadBtn').onclick=()=>{
   const now=new Date().toISOString().replaceAll(':','-'); const sessionId=Math.random().toString(36).slice(2,8).toUpperCase();
@@ -249,7 +279,7 @@ document.getElementById('downloadBtn').onclick=()=>{
   const esc=v=>String(v).includes(',')?`"${String(v).replaceAll('"','""')}"`:String(v);
   const csv=[...summary,'',headers.join(','),...rows.map(cols=>cols.map(esc).join(','))].join('\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const a=Object.assign(document.createElement('a'),{href:url,download:`results_scalefluency_${sessionId}_${now}.csv`});
+  const a=Object.assign(document.createElement('a'),{href:url,download:`results_scalefluency_pt1_${sessionId}_${now}.csv`});
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 };
 
@@ -366,4 +396,3 @@ editor.value=defaultCSV; try{ setQuestions(parseCSV(editor.value)); }catch{ setQ
 </script>
 </body>
 </html>
-
