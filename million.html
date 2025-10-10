@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Who Wants to Be a Million-Band-aire? — 6th Grade (Comedy Edition)</title>
+<style>
+  :root{
+    --bg:#060b1e; --bg2:#0b1540; --fg:#eaf2ff; --muted:#a8b3cf;
+    --accent:#00e1ff; --good:#4cff7a; --bad:#ff4c5b; --gold:#ffd166;
+    --panel:#0b1230cc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--fg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 800px at 50% -10%, #1a2a66 0%, var(--bg2) 60%),
+      radial-gradient(900px 600px at 90% 90%, #0a1336 0%, var(--bg) 60%),
+      linear-gradient(180deg, #070e24, #050a18);
+  }
+  header{
+    position:sticky; top:0; z-index:10; backdrop-filter: blur(6px);
+    background:linear-gradient(180deg,#070e24f0,#070e2490 60%, transparent);
+    border-bottom:1px solid #13245c; padding:12px 16px
+  }
+  .titleRow{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .title{font-weight:900; font-size:clamp(18px,3.2vw,28px)}
+  .sub{color:var(--muted); font-size:clamp(12px,2vw,14px)}
+  .controls{display:flex; gap:8px; flex-wrap:wrap}
+  button{
+    appearance:none; border:1px solid #203080; background:linear-gradient(#0c1440,#0a112f);
+    color:var(--fg); padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer;
+    transition:.15s transform,.15s box-shadow,.15s background,.15s opacity
+  }
+  button:hover{ transform:translateY(-1px); box-shadow:0 8px 24px #0006 }
+  button:disabled{ opacity:.55; cursor:not-allowed; transform:none }
+
+  main{padding:16px; display:grid; place-items:center}
+  .stage{ width:min(1180px,96vw); display:grid; gap:14px; grid-template-columns:1fr 320px }
+  @media (max-width:960px){ .stage{ grid-template-columns:1fr } }
+
+  .panel{
+    background:linear-gradient(180deg,#0b1238cc,#0a1030cc);
+    border:1px solid #1c2660; border-radius:22px; box-shadow:0 40px 120px #0008; overflow:hidden;
+  }
+
+  /* Game side */
+  .game{display:flex; flex-direction:column}
+  .questionBox{ padding:16px 16px 0 }
+  .money{ color:var(--gold); font-weight:900; letter-spacing:.3px; font-size:14px }
+  .q{ margin:8px 0 4px; font-size:clamp(18px,3vw,24px); line-height:1.35; font-weight:800 }
+  .hint{ color:var(--muted); font-size:13px; min-height:1.6em }
+  .joke{ color:#d1e9ff; font-size:14px; padding:10px 16px; border-top:1px dashed #2540a8 }
+
+  .lifelines{ display:flex; gap:8px; flex-wrap:wrap; padding:0 16px 12px }
+  .lifeBtn{ background:linear-gradient(#0a1842,#0a1334); border:1px dashed #2740a6 }
+  .lifeBtn.used{ opacity:.45; border-style:solid }
+
+  .choices{ display:grid; gap:12px; grid-template-columns:1fr 1fr; padding:16px }
+  @media (max-width:720px){ .choices{ grid-template-columns:1fr } }
+  .choice{
+    border:2px solid #1f2b6a; background:linear-gradient(#0b1342,#0a1030); color:#e6edff;
+    padding:14px; border-radius:16px; font-size:clamp(16px,2.5vw,20px); font-weight:800;
+    text-align:left; min-height:64px; display:flex; gap:10px; align-items:center; cursor:pointer;
+    user-select:none; -webkit-user-select:none;
+  }
+  .tag{ width:28px; height:28px; display:grid; place-items:center; border-radius:50%;
+    background:#0f1850; border:1px solid #25318c; color:#a8b3cf; font-weight:900 }
+  .choice.correct{ outline:4px solid var(--good); box-shadow:0 0 0 6px #4cff7a22 inset }
+  .choice.incorrect{ outline:4px solid var(--bad); box-shadow:0 0 0 6px #ff4c5b22 inset }
+
+  .statusRow{ display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-top:1px solid #1c2660; color:#a8b3cf; font-size:14px }
+
+  /* Money ladder */
+  .ladder{ padding:12px; display:flex; flex-direction:column; gap:8px }
+  .step{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:8px 12px; border:1px solid #1d2760; border-radius:12px; background:linear-gradient(#0b1340,#0a1132);
+    font-weight:800; color:#cfe2ff; opacity:.9;
+  }
+  .step.safe{ border-color:#7c5cff; color:#e7deff; background:linear-gradient(#24165e,#20124b) }
+  .step.active{ outline:3px solid var(--accent); box-shadow:0 0 0 4px #00e1ff22 inset; opacity:1 }
+  .prize{ color:var(--gold) }
+
+  details{ width:min(1180px,96vw); margin-top:16px }
+  details>summary{ cursor:pointer; padding:10px 2px; color:#cfe2ff; font-weight:800 }
+  textarea{
+    width:100%; min-height:260px; border-radius:12px; border:1px solid #26337a;
+    background:#0a1132; color:#eaf2ff; padding:10px; font-family:ui-monospace, Menlo, Consolas, monospace
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="titleRow">
+    <div>
+      <div class="title">Who Wants to Be a <span style="color:var(--gold)">Million-Band-aire?</span> — 6th Grade (Comedy Edition)</div>
+      <div class="sub">Progressive difficulty • 4 choices • Lifelines • Randomized answers • Jokes • CSV export</div>
+    </div>
+    <div class="controls">
+      <button id="resetBtn">Reset</button>
+      <button id="jokeBtn">Tell a Joke</button>
+      <button id="downloadBtn">Export CSV</button>
+      <button id="fullscreenBtn">Fullscreen</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <!-- Game Panel -->
+    <section class="panel game" id="game">
+      <div class="questionBox">
+        <div class="money" id="moneyText">Prize: $100</div>
+        <div class="q" id="questionText">Get ready…</div>
+        <div class="hint" id="hintText">Tip: Use lifelines if you need help.</div>
+        <div class="joke" id="jokeLine"></div>
+      </div>
+
+      <div class="lifelines">
+        <button class="lifeBtn" id="ll5050">50:50</button>
+        <button class="lifeBtn" id="llPoll">Ask the Band</button>
+        <button class="lifeBtn" id="llPhone">Phone the Maestro</button>
+        <button class="lifeBtn" id="llSkip">Skip</button>
+      </div>
+
+      <div class="choices">
+        <button class="choice" id="optA"><div class="tag">A</div><div class="label"></div></button>
+        <button class="choice" id="optB"><div class="tag">B</div><div class="label"></div></button>
+        <button class="choice" id="optC"><div class="tag">C</div><div class="label"></div></button>
+        <button class="choice" id="optD"><div class="tag">D</div><div class="label"></div></button>
+      </div>
+
+      <div class="statusRow">
+        <div id="status">Use A/B/C/D keys or click. Jokes appear after questions or via the button.</div>
+        <div id="stats">Q <span id="qNum">1</span>/15 • Correct <span id="correct">0</span> • Wrong <span id="wrong">0</span></div>
+      </div>
+    </section>
+
+    <!-- Ladder Panel -->
+    <aside class="panel">
+      <div class="ladder" id="ladder"></div>
+    </aside>
+  </div>
+
+  <details>
+    <summary>Load / edit questions (CSV format)</summary>
+    <p>Format (one per line): <code>prompt, A, B, C, D, correct(A-D), prize(optional), hint(optional)</code><br>
+    Prompts can include commas. If <b>prize</b> empty, default ladder is used. Hints optional.</p>
+    <textarea id="editor" spellcheck="false"></textarea>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+      <button id="applyBtn">Apply Questions</button>
+      <button id="sampleBtn">Reload Default Set</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+  </details>
+</main>
+
+<script>
+/* ========= Utilities ========= */
+const $ = s => document.querySelector(s);
+const shuffleInPlace = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ========= Jokes ========= */
+const JOKES = [
+  "Why did the trombone cross the road? To slide into the next measure.",
+  "I told my clarinet a joke. It didn’t laugh—no reeds for humor.",
+  "Why was the percussionist always calm? He knew how to handle the cymbals.",
+  "What’s a tuba’s favorite food? Oom-pasta.",
+  "Why did the saxophone get in trouble? Too many sharp remarks.",
+  "How do you fix a broken tuba? With a tuba-glue.",
+  "The conductor threw the baton. It was a moving performance.",
+  "I tried to play a note on a banana. It was very a-peeling, but not in tune.",
+  "Why don’t flutes ever get lost? They always follow the right key.",
+  "What do you call a group of musical whales? An orca-stra."
+];
+function showJoke() {
+  const j = JOKES[Math.floor(Math.random()*JOKES.length)];
+  $('#jokeLine').textContent = "🎤 " + j;
+}
+
+/* ========= Money Ladder ========= */
+const DEFAULT_LADDER = [100,200,300,500,1000, 2000,4000,8000,16000,32000, 64000,125000,250000,500000,1000000];
+const SAFE_STEPS = [5,10];
+
+/* ========= State ========= */
+let questions = [];
+let qIndex = 0, correct = 0, wrong = 0, currentMap = null;
+let results = [];
+let used5050=false, usedPoll=false, usedPhone=false, usedSkip=false;
+
+/* ========= Elements ========= */
+const moneyEl = $('#moneyText'), qEl = $('#questionText'), hintEl = $('#hintText'), jokeEl = $('#jokeLine');
+const statusEl = $('#status'), qNumEl = $('#qNum'), correctEl = $('#correct'), wrongEl = $('#wrong');
+const editor = $('#editor'), ladderEl = $('#ladder');
+
+const opts = { A:$('#optA'), B:$('#optB'), C:$('#optC'), D:$('#optD') };
+
+/* ========= CSV Parser ========= */
+function parseCSV(text){
+  return text
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map((line, idx) => {
+      const parts = line.split(',');
+      if(parts.length < 6) throw new Error(`Line ${idx+1}: need at least 6 fields`);
+      const correctRaw = parts[parts.length-3].trim();
+      const prizeRaw   = (parts.length>=7) ? parts[parts.length-2].trim() : '';
+      const hintRaw    = (parts.length>=8) ? parts[parts.length-1].trim() : '';
+      const head = parts.slice(0, parts.length-3).map(s=>s.trim());
+      if(head.length < 5) throw new Error(`Line ${idx+1}: need prompt,A,B,C,D before correct letter`);
+      const [prompt, A, B, C, D] = head;
+      const correct = (correctRaw||'').toUpperCase()[0];
+      if(!['A','B','C','D'].includes(correct)) throw new Error(`Line ${idx+1}: correct must be A/B/C/D`);
+      const prize = prizeRaw ? Number(prizeRaw) : null;
+      const hint  = hintRaw || '';
+      return { prompt, A, B, C, D, correct, prize, hint };
+    });
+}
+
+/* ========= Ladder ========= */
+function renderLadder(activeIndex){
+  ladderEl.innerHTML = '';
+  for(let i=DEFAULT_LADDER.length-1; i>=0; i--){
+    const step = document.createElement('div');
+    step.className = 'step' + (SAFE_STEPS.includes(i+1)?' safe':'') + ((i===activeIndex)?' active':'');
+    step.innerHTML = `<div>#${String(i+1).padStart(2,'0')}</div><div class="prize">$${DEFAULT_LADDER[i].toLocaleString()}</div>`;
+    ladderEl.appendChild(step);
+  }
+}
+
+/* ========= Game Control ========= */
+function restart(){
+  qIndex = 0; correct = 0; wrong = 0; results = [];
+  used5050=usedPoll=usedPhone=usedSkip=false;
+  ['ll5050','llPoll','llPhone','llSkip'].forEach(id=>$('#'+id).classList.remove('used'));
+  renderLadder(qIndex); renderQuestion();
+}
+
+function setQuestions(qs){
+  questions = qs.slice(0, DEFAULT_LADDER.length);
+  while(questions.length < DEFAULT_LADDER.length){
+    questions.push({
+      prompt:'Freebie: Which is a brass instrument?',
+      A:'Trumpet', B:'Violin', C:'Flute', D:'Laptop',
+      correct:'A', prize:null, hint:'If it uses a reed or strings, it is not brass.'
+    });
+  }
+  restart();
+}
+
+function buildOptionMap(q){
+  const entries = [['A',q.A],['B',q.B],['C',q.C],['D',q.D]];
+  shuffleInPlace(entries);
+  const map = { order:[], labels:[], correctVisibleIndex:null };
+  for(let i=0;i<4;i++){
+    map.order[i]  = entries[i][0];
+    map.labels[i] = entries[i][1];
+    if(entries[i][0]===q.correct) map.correctVisibleIndex = i;
+  }
+  return map;
+}
+
+function renderQuestion(){
+  const q = questions[qIndex];
+  if(!q){ endGame(); return; }
+
+  const prize = (q.prize ?? DEFAULT_LADDER[qIndex]);
+  moneyEl.textContent = `Prize: $${Number(prize).toLocaleString()}`;
+  qEl.textContent = q.prompt;
+  hintEl.textContent = 'Tip: Use lifelines if you need help.';
+  jokeEl.textContent = '';
+  statusEl.textContent = 'Choose your answer.';
+  qNumEl.textContent = String(qIndex+1);
+  correctEl.textContent = String(correct);
+  wrongEl.textContent   = String(wrong);
+
+  currentMap = buildOptionMap(q);
+  const labels = ['A','B','C','D'];
+  [opts.A,opts.B,opts.C,opts.D].forEach((btn,i)=>{
+    btn.disabled=false; btn.classList.remove('correct','incorrect');
+    btn.querySelector('.label').textContent = currentMap.labels[i];
+    btn.querySelector('.tag').textContent = labels[i];
+    btn.style.visibility='visible';
+  });
+
+  renderLadder(qIndex);
+}
+
+/* ========= Answer Handling ========= */
+async function pick(index){
+  const q = questions[qIndex];
+  if(!q || !currentMap) return;
+
+  [opts.A,opts.B,opts.C,opts.D].forEach(b=>b.disabled=true);
+
+  const isCorrect = (index === currentMap.correctVisibleIndex);
+  const btns = [opts.A,opts.B,opts.C,opts.D];
+  btns[index].classList.add(isCorrect?'correct':'incorrect');
+  if(!isCorrect) btns[currentMap.correctVisibleIndex].classList.add('correct');
+
+  const pickedLetter = ['A','B','C','D'][index];
+  const prize = (q.prize ?? DEFAULT_LADDER[qIndex]);
+  const earned = isCorrect ? prize : getSafePrize();
+
+  results.push({
+    n:qIndex+1, prompt:q.prompt,
+    visible_A: opts.A.querySelector('.label').textContent,
+    visible_B: opts.B.querySelector('.label').textContent,
+    visible_C: opts.C.querySelector('.label').textContent,
+    visible_D: opts.D.querySelector('.label').textContent,
+    mapping_order: currentMap.order.join(''),
+    correct_original: q.correct,
+    picked_visible: pickedLetter,
+    picked_original: currentMap.order[index],
+    isRight: isCorrect?'TRUE':'FALSE',
+    prize_this: prize,
+    earned_to_date: earned,
+    timestamp: new Date().toISOString()
+  });
+
+  if(isCorrect){
+    statusEl.textContent = `Correct! You’ve won $${prize.toLocaleString()} for this step.`;
+    correct++;
+    showJoke();                 // joke after correct answer
+    await sleep(900);
+    qIndex++;
+    if(qIndex >= DEFAULT_LADDER.length){ endGame(true); }
+    else { renderQuestion(); }
+  }else{
+    statusEl.textContent = `Incorrect. You leave with $${earned.toLocaleString()}.`;
+    wrong++;
+    showJoke();                 // still show a joke to keep vibes up
+    await sleep(1100);
+    endGame(false, earned);
+  }
+  correctEl.textContent = String(correct);
+  wrongEl.textContent   = String(wrong);
+}
+
+function getSafePrize(){
+  if(qIndex >= 10) return DEFAULT_LADDER[9];
+  if(qIndex >= 5)  return DEFAULT_LADDER[4];
+  return 0;
+}
+
+function endGame(won=false, amount=0){
+  const msg = won
+    ? `🎉 YOU'RE A MILLION-BAND-AIRE! Final winnings: $${DEFAULT_LADDER.at(-1).toLocaleString()}`
+    : `Game over. Final winnings: $${amount.toLocaleString()}`;
+  qEl.textContent = msg;
+  hintEl.textContent = 'Press Reset to play again.';
+  statusEl.textContent = 'Thanks for playing!';
+  [opts.A,opts.B,opts.C,opts.D].forEach(b=>b.disabled=true);
+  renderLadder(won ? DEFAULT_LADDER.length-1 : qIndex);
+}
+
+/* ========= Lifelines ========= */
+$('#ll5050').onclick = ()=>{
+  if(used5050 || !currentMap) return;
+  used5050 = true; $('#ll5050').classList.add('used');
+  const wrongIdxs = [0,1,2,3].filter(i => i !== currentMap.correctVisibleIndex);
+  shuffleInPlace(wrongIdxs);
+  const toHide = wrongIdxs.slice(0,2);
+  [opts.A,opts.B,opts.C,opts.D].forEach((b,i)=>{ if(toHide.includes(i)) b.style.visibility='hidden'; });
+  statusEl.textContent = '50:50 used — two wrong answers removed.';
+};
+
+$('#llPoll').onclick = ()=>{
+  if(usedPoll || !currentMap) return;
+  usedPoll = true; $('#llPoll').classList.add('used');
+  // simple poll: correct gets 55–75%, rest split random
+  const correctPct = 55 + Math.floor(Math.random()*21);
+  let rest = 100 - correctPct;
+  let other = [0,0,0];
+  for(let i=0;i<3;i++){ const n = i<2 ? Math.floor(Math.random()*(rest+1)) : rest; other[i]=n; rest-=n; }
+  shuffleInPlace(other);
+  const out = [0,0,0,0];
+  out[currentMap.correctVisibleIndex]=correctPct;
+  let oi=0; for(let i=0;i<4;i++) if(i!==currentMap.correctVisibleIndex) out[i]=other[oi++];
+
+  statusEl.textContent = `Ask the Band used — audience leans ${['A','B','C','D'][out.indexOf(Math.max(...out))]} (${Math.max(...out)}%).`;
+};
+
+$('#llPhone').onclick = ()=>{
+  if(usedPhone) return;
+  usedPhone = true; $('#llPhone').classList.add('used');
+  const q = questions[qIndex];
+  const hint = q.hint || 'Maestro: “Think basics: posture, breath, note values, and key signatures we know.”';
+  hintEl.textContent = hint;
+  statusEl.textContent = 'Phone the Maestro used.';
+};
+
+$('#llSkip').onclick = async ()=>{
+  if(usedSkip) return;
+  usedSkip = true; $('#llSkip').classList.add('used');
+  statusEl.textContent = 'Question skipped — no penalty.';
+  showJoke();
+  await sleep(500);
+  qIndex++;
+  if(qIndex >= DEFAULT_LADDER.length){ endGame(true); } else { renderQuestion(); }
+};
+
+/* ========= Buttons & Keys ========= */
+opts.A.onclick = ()=>pick(0);
+opts.B.onclick = ()=>pick(1);
+opts.C.onclick = ()=>pick(2);
+opts.D.onclick = ()=>pick(3);
+window.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if(k==='a') opts.A.click();
+  if(k==='b') opts.B.click();
+  if(k==='c') opts.C.click();
+  if(k==='d') opts.D.click();
+});
+
+$('#jokeBtn').onclick = () => showJoke();
+
+/* ========= Controls ========= */
+$('#resetBtn').onclick = ()=> restart();
+$('#fullscreenBtn').onclick=()=>{
+  const el=document.documentElement; if(!document.fullscreenElement){el.requestFullscreen?.();} else {document.exitFullscreen?.();}
+};
+$('#downloadBtn').onclick=()=>{
+  const now = new Date().toISOString().replaceAll(':','-');
+  const sessionId = Math.random().toString(36).slice(2,8).toUpperCase();
+  const summary = [
+    ['session_id',sessionId],
+    ['date',now],
+    ['questions_in_bank',questions.length],
+    ['answered',results.length],
+    ['correct',correct],
+    ['wrong',wrong],
+    ['final_winnings', getSafePrizeAfterEnd()]
+  ].map(r=>r.join(','));
+  const headers = ['n','prompt','visible_A','visible_B','visible_C','visible_D','mapping_order','correct_original','picked_visible','picked_original','isRight','prize_this','earned_to_date','timestamp'];
+  const rows = results.map(r => [
+    r.n, r.prompt, r.visible_A, r.visible_B, r.visible_C, r.visible_D,
+    r.mapping_order, r.correct_original, r.picked_visible, r.picked_original, r.isRight, r.prize_this, r.earned_to_date, r.timestamp
+  ]);
+  const esc=v=>String(v).includes(',')?`"${String(v).replaceAll('"','""')}"`:String(v);
+  const csv=[...summary,'',headers.join(','),...rows.map(cols=>cols.map(esc).join(','))].join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=Object.assign(document.createElement('a'),{href:url,download:`million_band_aire_6th_comedy_${sessionId}_${now}.csv`});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+function getSafePrizeAfterEnd(){
+  const maxCleared = results.reduce((m,r)=> r.isRight==='TRUE' ? Math.max(m, r.n) : m, 0);
+  if(maxCleared >= 10) return DEFAULT_LADDER[9];
+  if(maxCleared >= 5)  return DEFAULT_LADDER[4];
+  return 0;
+}
+
+/* ========= Default Questions (15 — classroom-safe & fact-checked) ========= */
+const defaultCSV = `
+When you enter the band room, what’s the BEST first move?, Say hello and get ready, Start a drum solo, Yell “FREEBIRD!”, Build a fort with stands, A,,Be polite and set up quickly.
+Which is a woodwind instrument?, Clarinet, Tuba, Violin, Triangle, A,,Woodwinds use air columns; most use reeds.
+Which is a brass instrument?, Trumpet, Oboe, Viola, Bassoon, A,,Brass uses lip buzz + metal tubing.
+Which is a percussion instrument?, Snare drum, Trombone, Trumpet, Clarinet, A,,If you strike it, it’s percussion.
+Which has VALVES?, Trumpet, Trombone (slide), Flute, Violin, A,1000,Trumpet typically has 3 valves.
+Best playing posture?, Sit tall at the edge of the chair, Slouch, Lean way back, Curl into a comma, A,,Tall posture helps breath & tone.
+Best breath for band playing?, Deep low breath, Tiny shallow breath, Hold your breath, Only breathe through your nose, A,,Use full, relaxed inhalation.
+Which dynamic is louder?, mf, mp, p, pp, A,,mf (mezzo-forte) is louder than mp/p/pp.
+A crescendo means…, Get louder, Get softer, Freeze, Start juggling, A,,Hairpin opens toward louder.
+In 4/4 time, how many beats in a measure?, 4, 3, 5, 8, A,32000,Top number = beats per measure.
+Which note value lasts the LONGEST (in 4/4)?, Whole note, Quarter note, Eighth note, Sixteenth note, A,,Whole = 4 counts in 4/4.
+Which marking means “short and separated”?, Staccato, Legato, Slur, Fermata, A,,Staccato = dots; legato = smooth.
+Which key has 1 flat?, F major, C major, G major, D major, A,,F major = Bb.
+Which scale has no sharps or flats?, C major, F major, Bb major, Eb major, A,250000,All natural notes.
+What does a fermata (𝄐) tell you to do?, Hold the note longer, Play faster, Stop completely, Whisper the note, A,1000000,Hold until the conductor cuts off.
+`.trim();
+
+/* ========= Editor ========= */
+$('#applyBtn').onclick = ()=> applyFromEditor();
+$('#sampleBtn').onclick = ()=>{ editor.value = defaultCSV; applyFromEditor(); };
+$('#clearBtn').onclick = ()=>{ editor.value=''; setQuestions([]); };
+
+function applyFromEditor(){
+  try{
+    const qs = parseCSV(editor.value.trim());
+    setQuestions(qs);
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+/* ========= Init ========= */
+function init(){
+  editor.value = defaultCSV;
+  try{
+    const qs = parseCSV(editor.value);
+    setQuestions(qs);
+  }catch(e){
+    alert('Error loading defaults: ' + e.message);
+  }
+}
+init();
+</script>
+</body>
+</html>
