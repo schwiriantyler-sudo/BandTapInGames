@@ -85,6 +85,26 @@
 </div>
 
 <script>
+// ==== Your Google Apps Script Web App URL ====
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTPEchaTC2rP7SxDWLf7tBGcVREc1O8jVIK0LklxuxKxOis0YDgmA4H0L9nFebvHZ98Q/exec';
+
+// Helper: send results to Google (Sheet + optional Drive file + email)
+async function sendToAppsScript({ summary, csvText, filename }) {
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary, csv: csvText, filename })
+    });
+    const json = await res.json();
+    console.log('Upload result:', json);
+    document.getElementById('footNote').textContent = json.ok ? '✅ Uploaded to Google.' : '⚠️ Upload failed.';
+  } catch (e) {
+    console.error(e);
+    document.getElementById('footNote').textContent = '⚠️ Upload error.';
+  }
+}
+
 /* ===== Quotes ===== */
 const QUOTES = [
   "Perfection is not attainable, but if we chase perfection we can catch excellence. — Vince Lombardi",
@@ -112,6 +132,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* ===== State ===== */
 let questions=[], i=0, correct=0, wrong=0, results=[];
 let currentCorrectSide = 'L'; // derived after randomizing visible sides
+
+// Anti-streak state (prevents 3+ in a row on same side)
+let lastCorrectSide = null;   // 'L' or 'R'
+let correctSideStreak = 0;    // count of same-side in a row
+
 const qIndexEl=$('#qIndex'), correctEl=$('#correct'), wrongEl=$('#wrong'), accEl=$('#accuracy');
 const promptEl=$('#prompt'), leftBtn=$('#left'), rightBtn=$('#right'), footNote=$('#footNote'), editor=$('#editor');
 
@@ -144,7 +169,7 @@ function parseCSV(text){
 }
 
 /* ===== Core ===== */
-function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; render(); }
+function setQuestions(qs){ questions=qs.slice(); i=0; correct=0; wrong=0; results=[]; lastCorrectSide=null; correctSideStreak=0; render(); }
 
 function render(){
   // Endless loop + reshuffle at the end
@@ -166,12 +191,29 @@ function render(){
 
   // 50/50 flip of visible sides so the correct answer is randomized
   const flip = Math.random() < 0.5;
-  const leftText  = flip ? q.right : q.left;
-  const rightText = flip ? q.left  : q.right;
+  let leftText  = flip ? q.right : q.left;   // let (not const) so we can swap for anti-streak
+  let rightText = flip ? q.left  : q.right;
 
   // Derive which visible side is correct after the flip
   const orig = q.correctSide; // 'L' or 'R' from CSV
   currentCorrectSide = flip ? (orig === 'L' ? 'R' : 'L') : orig;
+
+  // --- Anti-streak: avoid 3+ times in a row on the same visible side ---
+  if (lastCorrectSide === currentCorrectSide) {
+    correctSideStreak++;
+  } else {
+    correctSideStreak = 1;
+    lastCorrectSide = currentCorrectSide;
+  }
+  if (correctSideStreak >= 3) {
+    // swap the displayed text to flip the correct side
+    const tmp = leftText;
+    leftText = rightText;
+    rightText = tmp;
+    currentCorrectSide = (currentCorrectSide === 'L') ? 'R' : 'L';
+    lastCorrectSide = currentCorrectSide;
+    correctSideStreak = 1; // reset after forced flip
+  }
 
   // Render
   promptEl.textContent = q.prompt;
@@ -227,112 +269,18 @@ window.addEventListener('keydown',e=>{
 });
 
 /* ===== Controls ===== */
-document.getElementById('resetBtn').onclick=()=>{ i=0; correct=0; wrong=0; results=[]; render(); quoteLocked=false; startQuoteRotation(); };
-document.getElementById('shuffleBtn').onclick=()=>{ shuffleInPlace(questions); i=0; correct=0; wrong=0; results=[]; render(); };
+document.getElementById('resetBtn').onclick=()=>{ 
+  i=0; correct=0; wrong=0; results=[]; 
+  lastCorrectSide = null; correctSideStreak = 0;  // reset anti-streak
+  render(); quoteLocked=false; startQuoteRotation(); 
+};
+document.getElementById('shuffleBtn').onclick=()=>{ 
+  shuffleInPlace(questions); i=0; correct=0; wrong=0; results=[]; 
+  lastCorrectSide = null; correctSideStreak = 0;  // reset anti-streak
+  render(); 
+};
 document.getElementById('fullscreenBtn').onclick=()=>{ const el=document.documentElement; if(!document.fullscreenElement){el.requestFullscreen?.();} else {document.exitFullscreen?.();} };
 document.getElementById('downloadBtn').onclick=()=>{
   const now=new Date().toISOString().replaceAll(':','-'); const sessionId=Math.random().toString(36).slice(2,8).toUpperCase();
-  const summary=[
-    ['session_id',sessionId],
-    ['date',now],
-    ['total_questions_in_bank',questions.length],
-    ['answers_recorded',results.length],
-    ['correct',correct],
-    ['wrong',wrong],
-    ['accuracy_percent',accuracy(correct,wrong)]
-  ].map(r=>r.join(','));
-  const headers=['n','prompt','left','right','correctSide','pick','isRight','timestamp'];
-  const rows=results.map(r=>[r.n,r.prompt,r.left,r.right,r.correctSide,r.pick,r.isRight?'TRUE':'FALSE',r.isot]);
-  const esc=v=>String(v).includes(',')?`"${String(v).replaceAll('"','""')}"`:String(v);
-  const csv=[...summary,'',headers.join(','),...rows.map(cols=>cols.map(esc).join(','))].join('\n');
-  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const a=Object.assign(document.createElement('a'),{href:url,download:`results_level3_${sessionId}_${now}.csv`});
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-};
-
-/* ===== Default question set (Level 3 — 8th grade) ===== */
-const defaultCSV = `Which key has 4 flats?, Ab, E, L
-Which key has 4 sharps?, E, Ab, L
-Which key has 5 flats?, Db, B, L
-Which key has 5 sharps?, B, Db, L
-Which has more sharps?, A, E, R
-Which has more flats?, Eb, Ab, R
-Which has fewer accidentals?, F, E, L
-Major scale pattern is…, W-W-H-W-W-W-H, All half steps, L
-Chromatic scale pattern is…, All half steps, W-W-H-W-W-W-H, L
-Which triad sounds brighter?, Major, Minor, L
-Which triad sounds darker?, Minor, Major, L
-Which is louder?, ff, fff, R
-Which is softer?, pp, ppp, L
-Suddenly soft is…, Subito piano, Crescendo, L
-Suddenly loud is…, Subito forte, Decrescendo, L
-Marked accent is…, Accent, Slur, L
-Held longer is…, Fermata, Accent, L
-Connected different notes is…, Slur, Tie, L
-Connects same pitch is…, Tie, Slur, L
-Fast tempo is…, Allegro, Largo, L
-Very fast tempo is…, Presto, Andante, L
-Slow tempo is…, Largo, Presto, L
-Majestic tempo is…, Maestoso, Presto, L
-Lively tempo is…, Allegro, Largo, L
-Which is faster?, Presto, Allegro, L
-Which is slower?, Andante, Allegro, L
-Speed up means…, Accelerando, Ritardando, L
-Slow down means…, Ritardando, Accelerando, L
-Form with recurring A is…, Rondo, Fugue, L
-Form layering entries is…, Fugue, Rondo, L
-Phrase shape improves…, Musicality, Volume only, L
-Best blend strategy…, Match tone, Overpower, L
-Best balance strategy…, Hear melody, Only self, L
-Improve intonation…, Adjust/Listen, Ignore, L
-Improve rhythm…, Subdivide, Guess, L
-Better ensemble…, Watch & breathe, Ignore, L
-Piccolo vs flute: higher?, Piccolo, Flute, L
-Bass bone vs bone: lower?, Bass Trombone, Trombone, L
-Marimba vs snare: pitched?, Marimba, Snare, L
-Snare vs xylophone: unpitched?, Snare, Xylophone, L
-Clarinet reed type is…, Single reed, Double reed, L
-Oboe reed type is…, Double reed, Single reed, L
-Horn transposition is…, F, Bb, L
-Trumpet transposition is…, Bb, F, L
-Sax family is…, Woodwind, Brass, L
-Euphonium family is…, Brass, Woodwind, L
-Bassoon family is…, Woodwind, Brass, L
-Crescendo hairpin points…, Open to right, Open to left, L
-Decrescendo hairpin points…, Open to left, Open to right, L
-More tongue contact is…, Staccato, Slur, L
-More connected style is…, Legato, Staccato, L
-Tenuto means…, Full value, Short, L
-Marcato means…, Accented/separated, Slurred, L
-Intonation check is…, Tune to reference, Ignore, L
-If you’re sharp, move slide…, Out, In, L
-If you’re flat, move slide…, In, Out, L
-Key with 6 sharps?, F#, Gb, L
-Key with 6 flats?, Gb, F#, L
-Relative minor shares…, Key signature, Different signature, L
-Parallel minor shares…, Tonic pitch, Key signature, L
-Natural minor half steps at…, 2-3 & 5-6, 3-4 & 7-8, L
-Harmonic minor has…, Raised 7, Lowered 2, L
-Melodic minor ascending has…, Raised 6 & 7, Lowered 6 & 7, L
-Articulation that separates…, Staccato, Legato, L
-Articulation that connects…, Legato, Staccato, L
-Dynamic contrast means…, Range of volumes, One volume, L
-Timbre means…, Tone color, Note length, L
-Intonation means…, Pitch accuracy, Note speed, L
-Orchestration means…, Instrument choices, Tempo choice, L
-Rehearsal etiquette is…, Listen & respect, Disrupt, L
-Practice plan works…, Regular/targeted, Random, L
-Performance prep is…, Rest/warm-up, None, L
-Sight-reading tip is…, Keep steady tempo, Stop for mistakes, L`;
-
-/* ===== Editor ===== */
-document.getElementById('applyBtn').onclick=()=> applyFromEditor();
-document.getElementById('sampleBtn').onclick=()=>{ editor.value=defaultCSV; applyFromEditor(); };
-document.getElementById('clearBtn').onclick=()=>{ editor.value=''; setQuestions([]); };
-function applyFromEditor(){ try{ const qs=parseCSV(editor.value.trim()); setQuestions(qs); } catch(err){ alert(err.message); } }
-
-/* ===== Init ===== */
-editor.value=defaultCSV; try{ setQuestions(parseCSV(editor.value)); }catch{ setQuestions([]); }
-</script>
-</body>
-</html>
+  const summaryArr=[
+    [']()
